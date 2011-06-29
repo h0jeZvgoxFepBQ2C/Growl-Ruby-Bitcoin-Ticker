@@ -1,0 +1,28 @@
+Ruby script for OSX which fetches the current trade data of Mt. Gox and Bitmarket.eu (EUR) and 
+shows a growl notification if the trade data exceeds a specific up/down limit.
+
+You can justify yourself which limits you want (f.e. notification when last trade was 15 % higher than the last one)
+
+
+=== Requirements ===
+
+Ruby (think it works with 1.8.7 as well as 1.9.2)
+installed growlnotify
+
+and following gems:
+
+require 'rubygems'
+require 'json'
+require 'money'
+require 'growl'
+
+=== Limits ===
+
+Default values are:
+
+  up_mark = 1.007
+  down_mark = 0.993
+  
+You can set them in the script yourself.
+
+Feel free to send pull requests!
