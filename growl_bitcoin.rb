@@ -1,16 +1,19 @@
 # encoding: utf-8 #
+#!/usr/bin/ruby 
+
 require 'rubygems'
 require 'json'
 require 'net/http'
 require 'money'
 require 'growl'
+require 'colorize'
 
 include Growl
 
 bitmarket_eur_sell = bitmarket_eur_buy = bitmarket_eur_last = Money.new(0, "EUR")
 mtgox_eur_sell = mtgox_eur_buy =mtgox_eur_last = Money.new(0, "USD")
 
-max_wait_time_to_display = 9
+max_wait_time_to_display = 90
 
 def pdiff(pnew, pold)
   up_mark = 1.007
@@ -18,8 +21,19 @@ def pdiff(pnew, pold)
   
   mark_down_exceeded = pnew < (pold * down_mark)
   mark_up_exceeded = pnew > (pold * up_mark)
+  
+  col1 = mark_down_exceeded ? "down".on_black.red : "down".green
+  col2 = mark_up_exceeded ? "up".on_black.red : "up".green
 
-  puts "[#{pold}; #{pnew}]\t\t\t mark_down_exceeded (#{(pold * down_mark)}): #{mark_down_exceeded}, \t\t\tmark_up_exceeded (#{(pold * up_mark)}): #{mark_up_exceeded}"
+  poldt = pold.to_s.yellow
+  if pold == pnew
+    pnewt = pnew.to_s.yellow
+  elsif pold < pnew
+    pnewt = pnew.to_s.on_black.green
+  elsif pold > pnew
+    pnewt = pnew.to_s.on_black.red
+  end
+  puts "[#{poldt}; #{pnewt}]\t #{col1} (#{(pold * down_mark)}): #{mark_down_exceeded},\t #{col2} (#{(pold * up_mark)}): #{mark_up_exceeded}"
   
   return mark_down_exceeded || mark_up_exceeded
 end
@@ -29,6 +43,7 @@ def bitmarket_getcurr
 
   http = Net::HTTP.new(uri.host, uri.port)
   http.use_ssl = true
+  http.read_timeout = 90
   request = Net::HTTP::Get.new(uri.request_uri)
 
   response = http.request(request)
@@ -40,6 +55,7 @@ def mtgox_getcurr
 
   http = Net::HTTP.new(uri.host, uri.port)
   http.use_ssl = true
+  http.read_timeout = 90
   request = Net::HTTP::Get.new(uri.request_uri)
 
   response = http.request(request)
@@ -56,14 +72,14 @@ while true do
   begin
     result = bitmarket_getcurr
   rescue 
-    text = "Bitmarket.eu Timeout ERROR"
-    notify_error text, :sticky => true
+    text = "====== Bitmarket.eu Timeout ERROR ======"
+    puts text.on_black.red
   end
   begin
     result2 = mtgox_getcurr
   rescue 
-    text = "Mt.Gox Timeout ERROR"
-    notify_error text, :sticky => true
+    text = "====== Mt.Gox Timeout ERROR ======"
+    puts text.on_black.red
   end
   begin
   puts "#{Time.new} - New query, i = #{i}\n"
@@ -84,7 +100,7 @@ while true do
     text = ""
     if  i > max_wait_time_to_display || bitmarket_changed || i == 0
       text += "Bitmarket.eu"
-      text += ": NIX PASSIERT (#{bitmarket_eur_last})" if !bitmarket_changed
+      text += ": NIX PASSIERT (#{new_bitmarket_eur_last})" if !bitmarket_changed
       text += " #{new_bitmarket_eur_last > bitmarket_eur_last ? '++++++++' : '--------'}" 
       text += "\n[Last Trade] #{bitmarket_eur_last} € -> #{new_bitmarket_eur_last} €"  if pdiff(new_bitmarket_eur_last, bitmarket_eur_last)
       text += "\n[Last Sell] #{bitmarket_eur_sell} € -> #{new_bitmarket_eur_sell} €"  if pdiff(new_bitmarket_eur_sell, bitmarket_eur_sell)
@@ -92,7 +108,7 @@ while true do
     end
     if  i > max_wait_time_to_display || mtgox_changed || i == 0
       text += "\n\nMt.Gox"
-      text += ": NIX PASSIERT (#{mtgox_eur_last})" if !mtgox_changed
+      text += ": NIX PASSIERT (#{new_mtgox_eur_last})" if !mtgox_changed
       text += " #{new_mtgox_eur_last > mtgox_eur_last ? '++++++++' : '--------'}" 
       text += "\n[Last Trade] #{mtgox_eur_last} $ -> #{new_mtgox_eur_last} $" if pdiff(new_mtgox_eur_last, mtgox_eur_last)
       text += "\n[Last Sell] #{mtgox_eur_sell} $ -> #{new_mtgox_eur_sell} $" if  pdiff(new_mtgox_eur_sell, mtgox_eur_sell)
@@ -119,12 +135,12 @@ while true do
   rescue StandardError => e
     puts e.inspect
   end
-  20.times do
+#  20.times do
     if interrupted
       puts "safe exit"
       exit
     end
-    sleep 0.5
-  end
+ #   sleep 0.5
+  #end
   i += 1
 end
